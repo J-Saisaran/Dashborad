@@ -1,0 +1,185 @@
+// Velozity Global Solutions Technical Hiring Assessment
+// Normalized PostgreSQL Schema for Real-Time Client Project Dashboard
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// ENUMS
+// ----------------------------------------------------
+
+enum Role {
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+}
+
+enum TaskStatus {
+  TO_DO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+  OVERDUE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ----------------------------------------------------
+// MODELS
+// ----------------------------------------------------
+
+/// Represents a system user (Admin, Project Manager, or Developer).
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  name         String   @db.VarChar(100)
+  role         Role     @default(DEVELOPER)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  ownedProjects Project[]      @relation("ProjectOwner")
+  assignedTasks Task[]         @relation("TaskAssignee")
+  activities    Activity[]     @relation("UserActivities")
+  notifications Notification[] @relation("UserNotifications")
+  refreshTokens RefreshToken[] @relation("UserRefreshTokens")
+
+  @@index([role])
+  @@map("users")
+}
+
+/// Represents an external client who commissions projects.
+model Client {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(100)
+  email     String   @db.VarChar(255)
+  company   String   @db.VarChar(150)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  projects Project[]
+
+  @@map("clients")
+}
+
+/// Represents a project belonging to a client and owned by a Project Manager.
+model Project {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(150)
+  description String?  @db.Text
+  clientId    String   @map("client_id") @db.Uuid
+  ownerId     String   @map("owner_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  client     Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  owner      User       @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  tasks      Task[]
+  activities Activity[]
+
+  // Indexes for role-based scoping and client joins
+  @@index([ownerId], map: "idx_projects_owner_id")
+  @@index([clientId], map: "idx_projects_client_id")
+  @@map("projects")
+}
+
+/// Represents a unit of work assigned to a Developer within a Project.
+model Task {
+  id           String       @id @default(uuid()) @db.Uuid
+  title        String       @db.VarChar(200)
+  description  String?      @db.Text
+  status       TaskStatus   @default(TO_DO)
+  priority     TaskPriority @default(MEDIUM)
+  dueDate      DateTime     @map("due_date")
+  projectId    String       @map("project_id") @db.Uuid
+  assignedToId String?      @map("assigned_to_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  // Relationships
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedTo    User?          @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  activities    Activity[]
+  notifications Notification[]
+
+  // Critical Indexes for fast query filtering, assignment isolation, and overdue cron scans
+  @@index([projectId], map: "idx_tasks_project_id")
+  @@index([assignedToId], map: "idx_tasks_assigned_to_id")
+  @@index([status, priority, dueDate], map: "idx_tasks_filters")
+  @@index([dueDate, status], map: "idx_tasks_overdue_scan")
+  @@map("tasks")
+}
+
+/// Immutable persistent activity log for task status transitions.
+/// Fulfills the requirement: "Task status changes must create a persistent database activity record...
+/// Do not derive historical activity dynamically."
+model Activity {
+  id             String   @id @default(uuid()) @db.Uuid
+  taskId         String   @map("task_id") @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  previousStatus String   @map("previous_status") @db.VarChar(50)
+  newStatus      String   @map("new_status") @db.VarChar(50)
+  summary        String   @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation("UserActivities", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Composite index optimized for the "last 20 missed activity events on reconnect" query
+  @@index([projectId, createdAt(sort: Desc)], map: "idx_activities_project_recent")
+  @@index([taskId, createdAt(sort: Desc)], map: "idx_activities_task_recent")
+  @@map("activities")
+}
+
+/// Persistent in-app notifications for task assignments and review requests.
+model Notification {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  taskId    String?  @map("task_id") @db.Uuid
+  title     String   @db.VarChar(150)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User  @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  // Composite index for fast unread count queries and paginated user alerts
+  @@index([userId, isRead, createdAt(sort: Desc)], map: "idx_notifications_user_unread")
+  @@map("notifications")
+}
+
+/// Secure refresh token store with SHA-256 hashed tokens and revocation support.
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
+  userId    String   @map("user_id") @db.Uuid
+  expiresAt DateTime @map("expires_at")
+  isRevoked Boolean  @default(false) @map("is_revoked")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relationships
+  user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_refresh_tokens_user_id")
+  @@index([tokenHash], map: "idx_refresh_tokens_hash")
+  @@map("refresh_tokens")
+}

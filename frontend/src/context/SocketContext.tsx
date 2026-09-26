@@ -39,7 +39,8 @@ export const SocketProvider: React.FC<{ children: React.ReactNode; user: any }> 
       return;
     }
 
-    const newSocket = io('http://localhost:5000', {
+    const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'http://localhost:5000';
+    const newSocket = io(wsUrl, {
       transports: ['websocket'],
       auth: { token },
     });

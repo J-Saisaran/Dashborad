@@ -282,7 +282,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <ShieldCheck size={16} color="#818cf8" />
-                <span style={{ fontWeight: 600, color: '#f8fafc' }}>Saran Sai (Your Account)</span>
+                <span style={{ fontWeight: 600, color: '#f8fafc' }}>Admin (Saran Sai)</span>
               </div>
               <span className="badge badge-role-admin">Admin</span>
             </button>

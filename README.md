@@ -393,3 +393,43 @@ npm run build:frontend
 ```
 
 All 13 test suites execute and pass with **0 errors**.
+
+---
+
+## 11. Architectural Decisions & Justifications
+
+### 1. WebSocket Library Choice: Socket.io (with strict `transports: ['websocket']`)
+- **Decision**: Selected `Socket.io` configured exclusively with native WebSockets (`transports: ['websocket']`), strictly eliminating HTTP long-polling and SSE.
+- **Justification**: Socket.io provides built-in room abstractions (`project:<id>`, `user:<id>`, `role:admin`), automatic heartbeat/reconnection management, and handshake authentication middleware without having to re-implement connection lifecycle state machines from scratch, while strictly respecting the requirement of zero HTTP polling.
+
+### 2. Background Job Queue Choice: `node-cron`
+- **Decision**: Implemented `node-cron` combined with database-level idempotent state transitions.
+- **Justification**: A distributed queue like Bull/BullMQ requires a dedicated Redis instance, increasing operational overhead and infrastructure complexity. Given the periodic nature of the overdue task scan (runs every minute or at midnight), `node-cron` coupled with PostgreSQL's composite index `idx_tasks_overdue_scan` (`due_date`, `status`) performs sub-millisecond scans and atomic updates without external caching dependencies.
+
+### 3. Token Storage Approach
+- **Decision**: Dual-token architecture using short-lived in-memory access tokens (15m) and `HttpOnly`, `SameSite=Strict`, `Secure` cookies for refresh tokens (7d).
+- **Justification**: Storing tokens in `localStorage` or `sessionStorage` exposes users to XSS token theft. By keeping the access token in volatile JavaScript memory and the refresh token in an `HttpOnly` cookie, client-side scripts cannot read the refresh token. Rotating refresh tokens on every `/auth/refresh` call and storing SHA-256 hashes prevents token reuse and replay attacks.
+
+### 4. Database Indexing Strategy
+- **`idx_tasks_filters`** on `(status, priority, due_date)`: Accelerates multi-facet query filtering on task boards.
+- **`idx_tasks_overdue_scan`** on `(due_date, status)`: Ensures the periodic background cron scans only uncompleted, elapsed tasks in $O(\log N)$ time.
+- **`idx_activities_project_recent`** on `(project_id, created_at DESC)`: Directly fulfills the missed-event catchup requirement, fetching the last 20 records directly from PostgreSQL without in-memory caching.
+- **`idx_notifications_user_unread`** on `(user_id, is_read, created_at DESC)`: Enables instantaneous unread count badge lookups.
+
+---
+
+## 12. Known Limitations & Production Enhancements
+
+1. **Single-Node Presence Tracking**: The current `PresenceManager` uses an in-memory `Map` with multi-tab connection deduplication. For horizontal scaling across multiple backend instances, a Redis Pub/Sub adapter (`@socket.io/redis-adapter`) would be introduced to synchronize presence state across worker nodes.
+2. **Distributed Job Execution**: While `node-cron` is ideal for a single backend instance, running multiple backend replicas would require distributed leader election (e.g., PostgreSQL advisory locks via `pg_try_advisory_lock` or BullMQ) to ensure only one instance executes the overdue sweep.
+
+---
+
+## 13. Submission Explanation Field (150–250 Words)
+
+> **Copy and paste this into the assessment submission portal (https://bit.ly/4bGXmZV):**
+
+```text
+The hardest problem was architecting the real-time role-filtered activity feed while guaranteeing zero data leakage (IDOR prevention) and deterministic missed-event recovery without polling. I solved this by decoupling event dispatch into targeted Socket.io rooms: project-scoped channels (`project:<id>`), private user rooms (`user:<id>`), and an admin audit stream (`role:admin`). When task status transitions commit atomically in PostgreSQL, events are broadcast exclusively to active project viewers, while in-app assignment and review notifications target the recipient’s private room. For Developers, the API and WebSocket listeners strictly filter activities to assigned tasks, ensuring Developers cannot observe peers' activity or PM portfolios even with altered JWT payloads. For missed-event recovery, the client issues an `activity:catchup` event upon reconnecting; the backend queries PostgreSQL directly via composite index `idx_activities_project_recent` for the last 20 events without volatile in-memory caching. If doing this differently, I would integrate a Redis Pub/Sub adapter for Socket.io and PostgreSQL advisory locks for the cron worker to support seamless horizontal multi-instance scaling out of the box.
+```
+

@@ -167,8 +167,8 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout, onQuickLogin }) 
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
-        {/* Quick Demo Switcher */}
-        {onQuickLogin && (
+        {/* Quick Demo Switcher - Strictly restricted to Admin */}
+        {user.role === 'ADMIN' && onQuickLogin && (
           <div style={{ position: 'relative' }}>
             <button
               type="button"

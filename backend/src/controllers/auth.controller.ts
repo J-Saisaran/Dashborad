@@ -7,7 +7,7 @@ import { AuthenticatedRequest } from '../types/auth.types.js';
 const getRefreshTokenCookieOptions = () => ({
   httpOnly: true,
   secure: env.COOKIE_SECURE,
-  sameSite: 'lax' as const,
+  sameSite: (env.COOKIE_SECURE ? 'none' : 'lax') as 'none' | 'lax',
   path: '/api/auth',
   maxAge: env.JWT_REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000,
 });
@@ -84,7 +84,7 @@ export class AuthController {
       res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: env.COOKIE_SECURE,
-        sameSite: 'lax',
+        sameSite: (env.COOKIE_SECURE ? 'none' : 'lax') as 'none' | 'lax',
         path: '/api/auth',
       });
 

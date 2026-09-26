@@ -25,6 +25,8 @@ A production-grade, real-time client and project management platform built to sa
 8. [WebSocket Protocol Specification](#8-websocket-protocol-specification)
 9. [Background Jobs & Schedulers](#9-background-jobs--schedulers)
 10. [Test Suite Verification](#10-test-suite-verification)
+11. [Architectural Decisions & Justifications](#11-architectural-decisions--justifications)
+12. [Known Limitations & Production Enhancements](#12-known-limitations--production-enhancements)
 
 ---
 
@@ -422,14 +424,4 @@ All 13 test suites execute and pass with **0 errors**.
 
 1. **Single-Node Presence Tracking**: The current `PresenceManager` uses an in-memory `Map` with multi-tab connection deduplication. For horizontal scaling across multiple backend instances, a Redis Pub/Sub adapter (`@socket.io/redis-adapter`) would be introduced to synchronize presence state across worker nodes.
 2. **Distributed Job Execution**: While `node-cron` is ideal for a single backend instance, running multiple backend replicas would require distributed leader election (e.g., PostgreSQL advisory locks via `pg_try_advisory_lock` or BullMQ) to ensure only one instance executes the overdue sweep.
-
----
-
-## 13. Submission Explanation Field (150–250 Words)
-
-> **Copy and paste this into the assessment submission portal (https://bit.ly/4bGXmZV):**
-
-```text
-The hardest problem was architecting the real-time role-filtered activity feed while guaranteeing zero data leakage (IDOR prevention) and deterministic missed-event recovery without polling. I solved this by decoupling event dispatch into targeted Socket.io rooms: project-scoped channels (`project:<id>`), private user rooms (`user:<id>`), and an admin audit stream (`role:admin`). When task status transitions commit atomically in PostgreSQL, events are broadcast exclusively to active project viewers, while in-app assignment and review notifications target the recipient’s private room. For Developers, the API and WebSocket listeners strictly filter activities to assigned tasks, ensuring Developers cannot observe peers' activity or PM portfolios even with altered JWT payloads. For missed-event recovery, the client issues an `activity:catchup` event upon reconnecting; the backend queries PostgreSQL directly via composite index `idx_activities_project_recent` for the last 20 events without volatile in-memory caching. If doing this differently, I would integrate a Redis Pub/Sub adapter for Socket.io and PostgreSQL advisory locks for the cron worker to support seamless horizontal multi-instance scaling out of the box.
-```
 

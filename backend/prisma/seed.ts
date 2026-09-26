@@ -21,14 +21,24 @@ async function main() {
   const adminPasswordHash = await bcrypt.hash('AdminPass123!', 10);
   const pmPasswordHash = await bcrypt.hash('PmPass123!', 10);
   const devPasswordHash = await bcrypt.hash('DevPass123!', 10);
+  const saranPasswordHash = await bcrypt.hash('Sansai#007', 10);
 
-  // 3. Create Users (1 Admin, 2 PMs, 4 Developers)
+  // 3. Create Users (Admins, PMs, Developers)
   console.log('👤 Seeding Users...');
   const admin = await prisma.user.create({
     data: {
       name: 'Sarah Connor',
       email: 'admin@velozity.com',
       passwordHash: adminPasswordHash,
+      role: Role.ADMIN,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      name: 'Saran Sai',
+      email: 'saransai027@gmail.com',
+      passwordHash: saranPasswordHash,
       role: Role.ADMIN,
     },
   });

@@ -275,6 +275,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <button
               type="button"
               className="btn btn-secondary"
+              onClick={() => handleQuickLogin('saransai027@gmail.com', 'Sansai#007')}
+              disabled={loading}
+              style={{ justifyContent: 'space-between', padding: '0.55rem 0.85rem', fontSize: '0.8rem', border: '1px solid rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.1)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ShieldCheck size={16} color="#818cf8" />
+                <span style={{ fontWeight: 600, color: '#f8fafc' }}>Saran Sai (Your Account)</span>
+              </div>
+              <span className="badge badge-role-admin">Admin</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
               onClick={() => handleQuickLogin('admin@velozity.com', 'AdminPass123!')}
               disabled={loading}
               style={{ justifyContent: 'space-between', padding: '0.55rem 0.85rem', fontSize: '0.8rem' }}

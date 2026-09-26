@@ -89,6 +89,14 @@ export const authApi = {
     setAccessToken(res.accessToken);
     return res;
   },
+  register: async (userData: { name: string; email: string; password: string; role?: string }) => {
+    const res = await apiFetch<{ user: any; accessToken: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+    setAccessToken(res.accessToken);
+    return res;
+  },
   getMe: async () => {
     return apiFetch<{ user: any }>('/auth/me');
   },

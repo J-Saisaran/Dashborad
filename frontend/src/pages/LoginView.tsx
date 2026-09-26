@@ -1,32 +1,45 @@
 import React, { useState } from 'react';
-import { Layers, ShieldCheck, Briefcase, Code, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Layers, ShieldCheck, Briefcase, Code, Lock, Mail, ArrowRight, UserPlus, LogIn, User as UserIcon } from 'lucide-react';
 import { authApi } from '../api/client.ts';
-import type { User } from '../types/index.ts';
+import type { User, Role } from '../types/index.ts';
 
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<Role>('DEVELOPER');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError('Please provide both email and password');
+      setError('Please provide email and password');
+      return;
+    }
+
+    if (isRegisterMode && !name.trim()) {
+      setError('Please provide your full name');
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-      const res = await authApi.login({ email, password });
-      onLoginSuccess(res.user);
+      if (isRegisterMode) {
+        const res = await authApi.register({ name: name.trim(), email: email.trim(), password, role });
+        onLoginSuccess(res.user);
+      } else {
+        const res = await authApi.login({ email: email.trim(), password });
+        onLoginSuccess(res.user);
+      }
     } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please verify credentials.');
+      setError(err.message || `${isRegisterMode ? 'Registration' : 'Authentication'} failed. Please verify credentials.`);
     } finally {
       setLoading(false);
     }
@@ -35,6 +48,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const handleQuickLogin = async (quickEmail: string, quickPass: string) => {
     setEmail(quickEmail);
     setPassword(quickPass);
+    setIsRegisterMode(false);
     try {
       setLoading(true);
       setError(null);
@@ -84,8 +98,67 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Login Box */}
+        {/* Auth Box */}
         <div className="glass-panel" style={{ padding: '2rem' }}>
+          {/* Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              background: 'rgba(255, 255, 255, 0.04)',
+              padding: '4px',
+              borderRadius: '10px',
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => { setIsRegisterMode(false); setError(null); }}
+              style={{
+                flex: 1,
+                padding: '0.55rem',
+                border: 'none',
+                borderRadius: '7px',
+                background: !isRegisterMode ? '#6366f1' : 'transparent',
+                color: !isRegisterMode ? '#ffffff' : '#94a3b8',
+                fontWeight: 600,
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.2s',
+              }}
+            >
+              <LogIn size={15} />
+              <span>Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsRegisterMode(true); setError(null); }}
+              style={{
+                flex: 1,
+                padding: '0.55rem',
+                border: 'none',
+                borderRadius: '7px',
+                background: isRegisterMode ? '#6366f1' : 'transparent',
+                color: isRegisterMode ? '#ffffff' : '#94a3b8',
+                fontWeight: 600,
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.2s',
+              }}
+            >
+              <UserPlus size={15} />
+              <span>Register</span>
+            </button>
+          </div>
+
           {error && (
             <div
               style={{
@@ -106,6 +179,26 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+            {isRegisterMode && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 500 }}>
+                  Full Name
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <UserIcon size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
+                  <input
+                    type="text"
+                    className="input-control"
+                    style={{ paddingLeft: '2.4rem' }}
+                    placeholder="Alex Morgan"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 500 }}>
                 Email Address
@@ -126,7 +219,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             <div>
               <label style={{ display: 'block', fontSize: '0.82rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 500 }}>
-                Password
+                Password {isRegisterMode && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>(min. 6 chars)</span>}
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#64748b' }} />
@@ -142,13 +235,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               </div>
             </div>
 
+            {isRegisterMode && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 500 }}>
+                  Account Role
+                </label>
+                <select
+                  className="input-control"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as Role)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="DEVELOPER">Developer (Task execution & status updates)</option>
+                  <option value="PROJECT_MANAGER">Project Manager (Projects, tasks, assignments)</option>
+                  <option value="ADMIN">Admin (Full platform & user access)</option>
+                </select>
+              </div>
+            )}
+
             <button
               type="submit"
               className="btn btn-primary"
               disabled={loading}
               style={{ marginTop: '0.5rem', width: '100%', padding: '0.75rem', fontSize: '0.92rem' }}
             >
-              <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
+              <span>{loading ? (isRegisterMode ? 'Creating Account...' : 'Authenticating...') : (isRegisterMode ? 'Create Account & Enter' : 'Sign In')}</span>
               <ArrowRight size={16} />
             </button>
           </form>

@@ -1,11 +1,63 @@
+import { Role } from '@prisma/client';
 import { prisma } from '../config/database.js';
 import { env } from '../config/environment.js';
-import { comparePassword, generateRandomToken, hashToken } from '../utils/crypto.js';
+import { comparePassword, hashPassword, generateRandomToken, hashToken } from '../utils/crypto.js';
 import { signAccessToken } from '../utils/jwt.js';
 import { UnauthorizedError, NotFoundError } from '../utils/errors.js';
-import { LoginInput } from '../validators/auth.validator.js';
+import { LoginInput, RegisterInput } from '../validators/auth.validator.js';
 
 export class AuthService {
+  /**
+   * Register a new user and immediately issue tokens.
+   */
+  async register(input: RegisterInput) {
+    const existing = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
+
+    if (existing) {
+      throw new UnauthorizedError('A user with this email address already exists', 'USER_ALREADY_EXISTS');
+    }
+
+    const passwordHash = await hashPassword(input.password);
+    const user = await prisma.user.create({
+      data: {
+        name: input.name,
+        email: input.email,
+        passwordHash,
+        role: input.role || Role.DEVELOPER,
+      },
+    });
+
+    const accessToken = signAccessToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const rawRefreshToken = generateRandomToken();
+    const tokenHash = hashToken(rawRefreshToken);
+    const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRES_DAYS * 24 * 60 * 60 * 1000);
+
+    await prisma.refreshToken.create({
+      data: {
+        tokenHash,
+        userId: user.id,
+        expiresAt,
+      },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      accessToken,
+      rawRefreshToken,
+    };
+  }
   /**
    * Authenticate a user with email and password.
    * Issues a short-lived access token and a long-lived refresh token.

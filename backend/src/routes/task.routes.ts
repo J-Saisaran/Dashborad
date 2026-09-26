@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { taskController } from '../controllers/task.controller.js';
 import { authenticate } from '../middlewares/auth.middleware.js';
 import { requireTaskAccess } from '../middlewares/resourceAuth.middleware.js';
@@ -19,7 +19,7 @@ router.get(
 );
 
 // Admin manual/testing trigger for background overdue job scan
-router.post('/check-overdue', requireAdmin, async (_req, res, next) => {
+router.post('/check-overdue', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await scanAndMarkOverdueTasks();
     res.status(200).json({ success: true, data: result });

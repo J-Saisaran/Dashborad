@@ -12,7 +12,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<Role>('DEVELOPER');
+  const role: Role = 'DEVELOPER';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,20 +236,21 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
 
             {isRegisterMode && (
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', color: '#94a3b8', marginBottom: '0.4rem', fontWeight: 500 }}>
-                  Account Role
-                </label>
-                <select
-                  className="input-control"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as Role)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="DEVELOPER">Developer (Task execution & status updates)</option>
-                  <option value="PROJECT_MANAGER">Project Manager (Projects, tasks, assignments)</option>
-                  <option value="ADMIN">Admin (Full platform & user access)</option>
-                </select>
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '8px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  fontSize: '0.8rem',
+                  color: '#6ee7b7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <Code size={15} color="#34d399" />
+                <span>Account Type: <strong>Developer</strong> (Standard Team Member)</span>
               </div>
             )}
 

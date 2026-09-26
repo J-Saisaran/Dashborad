@@ -6,7 +6,8 @@ import {
   Users,
   FolderPlus,
   PlusCircle,
-  Building
+  Building,
+  UserPlus
 } from 'lucide-react';
 import { useSocket } from '../context/SocketContext.tsx';
 import { dashboardApi, projectApi, taskApi } from '../api/client.ts';
@@ -17,6 +18,7 @@ import { CreateProjectModal } from '../components/CreateProjectModal.tsx';
 import { CreateTaskModal } from '../components/CreateTaskModal.tsx';
 import { EditTaskModal } from '../components/EditTaskModal.tsx';
 import { TaskDetailModal } from '../components/TaskDetailModal.tsx';
+import { CreateUserModal } from '../components/CreateUserModal.tsx';
 import type { User, Project, Task, TaskFilterParams, TaskStatus } from '../types/index.ts';
 
 interface AdminDashboardProps {
@@ -33,6 +35,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
   // Modals state
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isEditTaskOpen, setIsEditTaskOpen] = useState(false);
@@ -137,7 +140,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setIsCreateUserOpen(true)}
+          >
+            <UserPlus size={16} />
+            <span>New User</span>
+          </button>
           <button
             type="button"
             className="btn btn-secondary"
@@ -392,6 +403,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user }) => {
         task={selectedTask}
         currentUser={user}
         onStatusChange={handleStatusChange}
+      />
+
+      <CreateUserModal
+        isOpen={isCreateUserOpen}
+        onClose={() => setIsCreateUserOpen(false)}
       />
     </div>
   );

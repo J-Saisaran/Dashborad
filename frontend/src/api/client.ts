@@ -215,6 +215,12 @@ export const userApi = {
     const qs = role ? `?role=${role}` : '';
     return apiFetch<{ users: any[] }>(`/users${qs}`);
   },
+  createUser: async (data: { name: string; email: string; password: string; role: string }) => {
+    return apiFetch<{ user: any }>('/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export const notificationApi = {

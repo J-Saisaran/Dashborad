@@ -9,10 +9,27 @@ import { presenceManager } from './presence.manager.js';
 import { emitPresenceUpdate, setSocketServer } from './event.emitter.js';
 import { AuthenticatedSocket } from './types.js';
 
+const isOriginAllowed = (origin?: string): boolean => {
+  if (!origin) return true;
+  const cleanOrigin = origin.replace(/\/$/, '').toLowerCase();
+  const cleanClientUrl = env.CLIENT_URL ? env.CLIENT_URL.replace(/\/$/, '').toLowerCase() : '';
+
+  if (cleanOrigin === cleanClientUrl) return true;
+  if (cleanOrigin.endsWith('.vercel.app')) return true;
+  if (cleanOrigin.includes('localhost') || cleanOrigin.includes('127.0.0.1')) return true;
+
+  return false;
+};
+
 export const initSocketServer = (httpServer: http.Server): Server => {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          return callback(null, origin || true);
+        }
+        return callback(new Error(`WebSocket CORS blocked for origin: ${origin}`));
+      },
       credentials: true,
     },
     transports: ['websocket'], // Strictly WebSocket as required (no polling fallback)

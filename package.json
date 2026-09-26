@@ -9,7 +9,7 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "build:backend": "npm --prefix backend run build",
     "build:frontend": "npm --prefix frontend run build",
-    "build": "npm run build:backend && npm run build:frontend",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "test": "npm --prefix backend test",
     "prisma:migrate": "npm --prefix backend run prisma:migrate",
     "prisma:seed": "npm --prefix backend run prisma:seed"

@@ -26,6 +26,14 @@ const isOriginAllowed = (origin?: string): boolean => {
   return false;
 };
 
+// Handle Private Network Access (PNA) for Chrome when called from public origins (e.g. Vercel) to localhost
+app.use((req, res, next) => {
+  if (req.headers['access-control-request-private-network']) {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
+  next();
+});
+
 // Standard middleware
 app.use(cors({
   origin: (origin, callback) => {
@@ -36,7 +44,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Access-Control-Request-Private-Network'],
 }));
 app.use(express.json());
 app.use(cookieParser());

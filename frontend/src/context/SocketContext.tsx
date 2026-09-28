@@ -39,7 +39,11 @@ export const SocketProvider: React.FC<{ children: React.ReactNode; user: any }> 
       return;
     }
 
-    const wsUrl = (import.meta as any).env?.VITE_WS_URL || 'http://localhost:5000';
+    const wsUrl =
+      (import.meta as any).env?.VITE_WS_URL ||
+      ((import.meta as any).env?.PROD
+        ? 'https://velozity-dashboard-9p9c.onrender.com'
+        : 'http://localhost:5000');
     const newSocket = io(wsUrl, {
       transports: ['websocket'],
       auth: { token },
